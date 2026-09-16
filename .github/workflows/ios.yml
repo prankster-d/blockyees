@@ -1,0 +1,53 @@
+name: iPad build and tests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core tests
+        run: swift test
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Select iPad simulator
+        run: |
+          xcrun simctl list devices available -j > /tmp/devices.json
+          python3 - <<'PY'
+          import json, os
+          devices = json.load(open('/tmp/devices.json'))['devices']
+          ipad = next(d for group in devices.values() for d in group if 'iPad' in d['name'])
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('SIMULATOR_ID=' + ipad['udid'] + '\n')
+          PY
+      - name: Build and run iPad journey
+        run: |
+          set -o pipefail
+          xcodebuild test -project Blockyees.xcodeproj -scheme Blockyees \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO | tee build.log
+      - name: Export test images
+        if: always()
+        run: |
+          if [ -d TestResults.xcresult ]; then
+            xcrun xcresulttool export attachments --path TestResults.xcresult --output-path test-images || true
+          fi
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipad-verification
+          path: |
+            build.log
+            TestResults.xcresult
+            test-images
+            Blockyees.xcodeproj
+            build/Build/Products/Debug-iphonesimulator/Blockyees.app

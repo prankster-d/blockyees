@@ -12,3 +12,10 @@ xcuserdata/
 *.mobileprovision
 *.ipa
 *.xcarchive/
+Blockyees.xcodeproj/
+TestResults.xcresult/
+test-images/
+build.log
+.swiftpm/
+config/Info.plist
+config/Blockyees.entitlements
