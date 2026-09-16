@@ -14,6 +14,7 @@ struct DrawingCanvas: UIViewRepresentable {
     func updateUIView(_ view: CanvasScrollView, context: Context) {
         view.surface.session = session
         view.surface.onions = Array(previousPages.prefix(session.onionBefore)) + Array(nextPages.prefix(session.onionAfter))
+        view.surface.refreshLayerCache()
         view.surface.setNeedsDisplay()
         let size = CGSize(width: session.page.width, height: session.page.height)
         if view.surface.bounds.size != size {
@@ -62,6 +63,26 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate, UIPencilInteracti
     private var dragStart: CGPoint?
     private var dragCurrent: CGPoint?
     private var trackedTouch: UITouch?
+    private var layerCache: [UUID: (DrawingLayer, UIImage)] = [:]
+    private var cacheSize = CGSize.zero
+
+    func refreshLayerCache() {
+        guard let session else { return }
+        let size = CGSize(width: session.page.width, height: session.page.height)
+        if cacheSize != size { layerCache.removeAll(); cacheSize = size }
+        let ids = Set(session.page.layers.map(\.id))
+        layerCache = layerCache.filter { ids.contains($0.key) }
+        for layer in session.page.layers {
+            if layerCache[layer.id]?.0 == layer { continue }
+            let scale = min(1, 1600 / max(size.width, size.height))
+            let format = UIGraphicsImageRendererFormat(); format.scale = 1
+            let image = UIGraphicsImageRenderer(size: CGSize(width: size.width * scale, height: size.height * scale), format: format).image {
+                $0.cgContext.scaleBy(x: scale, y: scale)
+                for element in layer.elements { PageRenderer.draw(element, in: $0.cgContext) }
+            }
+            layerCache[layer.id] = (layer, image)
+        }
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -95,7 +116,18 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate, UIPencilInteracti
                 preview.layers[index].elements[i].transform(dx: current.x - start.x, dy: current.y - start.y, center: InkPoint(x: 0, y: 0))
             }
         }
-        PageRenderer.draw(preview, in: context, background: false, extra: stroke, activeLayer: session.activeLayerID)
+        if dragStart != nil {
+            PageRenderer.draw(preview, in: context, background: false)
+        } else {
+            for layer in preview.layers where layer.isVisible && layer.opacity > 0 {
+                context.saveGState(); context.setAlpha(layer.opacity)
+                context.beginTransparencyLayer(auxiliaryInfo: nil)
+                if let image = layerCache[layer.id]?.1 { image.draw(in: bounds) }
+                else { for element in layer.elements { PageRenderer.draw(element, in: context) } }
+                if layer.id == session.activeLayerID, let stroke { PageRenderer.draw(stroke, in: context) }
+                context.endTransparencyLayer(); context.restoreGState()
+            }
+        }
         context.setStrokeColor(UIColor.systemTeal.cgColor)
         context.setLineWidth(2)
         context.setLineDash(phase: 0, lengths: [8, 5])

@@ -1,6 +1,12 @@
 import SwiftUI
 
 @MainActor
+private enum DrawingClipboard {
+    static var layer: DrawingLayer?
+    static var selection: [DrawingElement] = []
+}
+
+@MainActor
 final class EditorSession: ObservableObject {
     @Published var page: NotebookPage
     @Published var activeLayerID: UUID
@@ -18,8 +24,14 @@ final class EditorSession: ObservableObject {
     @Published var fitRequest = UUID()
     @Published private(set) var undoStack: [NotebookPage] = []
     @Published private(set) var redoStack: [NotebookPage] = []
-    var layerClipboard: DrawingLayer?
-    var selectionClipboard: [DrawingElement] = []
+    var layerClipboard: DrawingLayer? {
+        get { DrawingClipboard.layer }
+        set { DrawingClipboard.layer = newValue; objectWillChange.send() }
+    }
+    var selectionClipboard: [DrawingElement] {
+        get { DrawingClipboard.selection }
+        set { DrawingClipboard.selection = newValue; objectWillChange.send() }
+    }
     var onSave: (NotebookPage) -> Void
 
     init(page: NotebookPage, onSave: @escaping (NotebookPage) -> Void) {

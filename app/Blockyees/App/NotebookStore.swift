@@ -6,6 +6,7 @@ final class NotebookStore: ObservableObject {
     @Published private(set) var folders: [NotebookFolder] = []
     @Published var isLoading = true
     @Published var errorMessage: String?
+    @Published var pageClipboard: NotebookPage?
     @Published var syncMessage = "На устройстве"
     @Published private(set) var isSyncing = false
     @Published private(set) var pendingWrites = 0
@@ -36,7 +37,9 @@ final class NotebookStore: ObservableObject {
         loaded = true
         do {
             let (notes, savedFolders, warnings) = try await repository.load()
-            notebooks = notes; folders = savedFolders
+            // Imports can arrive from Files while the initial disk read is running.
+            for note in notes where !notebooks.contains(where: { $0.id == note.id }) { notebooks.append(note) }
+            for folder in savedFolders where !folders.contains(where: { $0.id == folder.id }) { folders.append(folder) }
             for note in notes { recoverFolder(from: note) }
             if !warnings.isEmpty { errorMessage = warnings.joined(separator: "\n") }
         } catch { errorMessage = error.localizedDescription }

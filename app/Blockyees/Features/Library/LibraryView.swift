@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct LibraryView: View {
     @EnvironmentObject private var store: NotebookStore
     @State private var folderID: UUID?
+    @State private var showUnfiled = false
     @State private var path: [UUID] = []
     @State private var search = ""
     @State private var showNewNotebook = false
@@ -18,18 +19,20 @@ struct LibraryView: View {
     private var currentFolder: NotebookFolder? { store.folders.first { $0.id == folderID } }
     private var filtered: [Notebook] {
         store.visibleNotebooks.filter { note in
-            (folderID == nil || note.folderID == folderID) && (search.isEmpty || note.title.localizedCaseInsensitiveContains(search))
+            (folderID == nil || note.folderID == folderID) && (!showUnfiled || note.folderID == nil) && (search.isEmpty || note.title.localizedCaseInsensitiveContains(search))
         }
     }
 
     var body: some View {
         NavigationSplitView {
             List {
-                Button { folderID = nil; path = [] } label: { Label("Все блокноты", systemImage: "square.grid.2x2") }
-                    .listRowBackground(folderID == nil ? Color.teal.opacity(0.12) : Color.clear)
+                Button { folderID = nil; showUnfiled = false; path = [] } label: { Label("Все блокноты", systemImage: "square.grid.2x2") }
+                    .listRowBackground(folderID == nil && !showUnfiled ? Color.teal.opacity(0.12) : Color.clear)
+                Button { folderID = nil; showUnfiled = true; path = [] } label: { Label("Без папки", systemImage: "tray") }
+                    .listRowBackground(showUnfiled ? Color.teal.opacity(0.12) : Color.clear)
                 Section("Папки") {
                     ForEach(store.folders.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }) { folder in
-                        Button { folderID = folder.id; path = [] } label: { Label(folder.name, systemImage: "folder") }
+                        Button { folderID = folder.id; showUnfiled = false; path = [] } label: { Label(folder.name, systemImage: "folder") }
                             .listRowBackground(folderID == folder.id ? Color.teal.opacity(0.12) : Color.clear)
                     }
                     Button { showNewFolder = true } label: { Label("Новая папка", systemImage: "folder.badge.plus") }
@@ -46,12 +49,13 @@ struct LibraryView: View {
                 Group {
                     if store.isLoading { ProgressView("Открываем библиотеку…") }
                     else if filtered.isEmpty {
-                        ContentUnavailableView {
-                            Label(search.isEmpty ? "Место для твоих идей" : "Ничего не найдено", systemImage: "book.closed")
-                        } description: { Text(search.isEmpty ? "Создай блокнот или импортируй документ." : "Попробуй другое название.") }
-                        actions: {
+                        VStack(spacing: 16) {
+                            Image(systemName: "book.closed").font(.system(size: 48)).foregroundStyle(.secondary)
+                            Text(search.isEmpty ? "Место для твоих идей" : "Ничего не найдено").font(.title2.bold())
+                            Text(search.isEmpty ? "Создай блокнот или импортируй документ." : "Попробуй другое название.")
+                                .foregroundStyle(.secondary)
                             Button("Создать блокнот") { showNewNotebook = true }.buttonStyle(.borderedProminent)
-                        }
+                        }.multilineTextAlignment(.center).padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         ScrollView {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 24)], spacing: 24) {
@@ -61,7 +65,7 @@ struct LibraryView: View {
                     }
                 }
                 .background(Color(uiColor: .systemGroupedBackground))
-                .navigationTitle(currentFolder?.name ?? "Мои блокноты")
+                .navigationTitle(currentFolder?.name ?? (showUnfiled ? "Без папки" : "Мои блокноты"))
                 .searchable(text: $search, prompt: "Найти блокнот")
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {

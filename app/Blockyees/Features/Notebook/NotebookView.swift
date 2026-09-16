@@ -5,7 +5,6 @@ struct NotebookView: View {
     let notebookID: UUID
     @State private var editingPage: NotebookPage?
     @State private var pendingDelete: UUID?
-    @State private var copiedPage: NotebookPage?
     @State private var horizontal = false
     @State private var thumbnailWidth: Double = 220
     @State private var exporting = false
@@ -54,9 +53,9 @@ struct NotebookView: View {
                         Toggle("Горизонтальный обзор", isOn: $horizontal)
                         Button(thumbnailWidth < 200 ? "Крупные страницы" : "Компактные страницы") { thumbnailWidth = thumbnailWidth < 200 ? 220 : 150 }
                         Button("Вставить страницу") {
-                            guard let copy = copiedPage?.duplicated() else { return }
+                            guard let copy = store.pageClipboard?.duplicated() else { return }
                             store.mutate(notebookID) { $0.pages.append(copy) }
-                        }.disabled(copiedPage == nil)
+                        }.disabled(store.pageClipboard == nil)
                         Button("Экспорт блокнота") { exporting = true }
                         Button("Экспорт PDF") {
                             do {
@@ -107,6 +106,7 @@ struct NotebookView: View {
                     .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
             }.buttonStyle(.plain).accessibilityLabel("Открыть страницу \((notebook.pages.firstIndex(where: { $0.id == page.id }) ?? 0) + 1)")
                 .accessibilityIdentifier("page-\(page.id.uuidString)")
+                .onDrag { NSItemProvider(object: PageRenderer.image(page, maxDimension: 1600)) }
             HStack {
                 Text("Страница \((notebook.pages.firstIndex(where: { $0.id == page.id }) ?? 0) + 1)")
                     .font(.subheadline.weight(.medium))
@@ -121,7 +121,7 @@ struct NotebookView: View {
                             note.pages.insert(copy, at: index + 1)
                         }
                     }
-                    Button("Копировать") { copiedPage = page }
+                    Button("Копировать") { store.pageClipboard = page }
                     Button("В начало основного порядка") {
                         store.mutate(notebookID) { note in
                             note.pages.removeAll { $0.id == page.id }; note.pages.insert(page, at: 0)

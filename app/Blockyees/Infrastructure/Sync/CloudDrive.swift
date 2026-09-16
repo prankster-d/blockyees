@@ -78,7 +78,17 @@ actor CloudDrive {
                 // The conflict copy must be durable before the primary document changes.
                 for copy in values.dropFirst() {
                     let copyURL = root.appendingPathComponent(copy.id.uuidString).appendingPathExtension("blockyees")
-                    try NotebookCodec.encode(copy).write(to: copyURL, options: .atomic)
+                    if FileManager.default.fileExists(atPath: copyURL.path) {
+                        let existing = try NotebookCodec.decode(Data(contentsOf: copyURL))
+                        // A recovered copy may already have been edited on another device.
+                        // Never replace its newer contents with the original conflict snapshot.
+                        for preserved in RevisionMerge.merge(existing, copy) {
+                            let target = root.appendingPathComponent(preserved.id.uuidString).appendingPathExtension("blockyees")
+                            try NotebookCodec.encode(preserved).write(to: target, options: .atomic)
+                        }
+                    } else {
+                        try NotebookCodec.encode(copy).write(to: copyURL, options: .atomic)
+                    }
                 }
                 try NotebookCodec.encode(values[0]).write(to: coordinated, options: .atomic)
                 // Do not remove system conflict versions here: they remain a recovery source.
