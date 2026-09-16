@@ -8,6 +8,8 @@ private enum DrawingClipboard {
 
 @MainActor
 final class EditorSession: ObservableObject {
+    @Published var onionActiveLayerOnly = false
+    @Published var inputError: String?
     @Published var page: NotebookPage
     @Published var activeLayerID: UUID
     @Published var tool: DrawingTool = .pen
@@ -143,13 +145,13 @@ final class EditorSession: ObservableObject {
         selection.removeAll()
     }
 
-    func insertImage(_ image: UIImage) throws {
+    func insertImage(_ image: UIImage, at position: CGPoint? = nil) throws {
         guard let index = activeIndex else { return }
         let imagePage = try DocumentIO.page(from: image)
         var element = imagePage.layers[0].elements[0]
         let factor = min(1, min(page.width / element.imageWidth, page.height / element.imageHeight) * 0.85)
         element.imageWidth *= factor; element.imageHeight *= factor
-        element.imageX = page.width / 2; element.imageY = page.height / 2
+        element.imageX = position?.x ?? page.width / 2; element.imageY = position?.y ?? page.height / 2
         edit { $0.layers[index].elements.append(element) }
         selection = [element.id]; tool = .select
     }

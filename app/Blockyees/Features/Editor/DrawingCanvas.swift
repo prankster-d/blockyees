@@ -103,7 +103,10 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate, UIPencilInteracti
         guard let session, let context = UIGraphicsGetCurrentContext() else { return }
         context.setFillColor(UIColor.white.cgColor); context.fill(bounds)
         if session.mirror { context.translateBy(x: bounds.width, y: 0); context.scaleBy(x: -1, y: 1) }
-        for onion in onions {
+        for var onion in onions {
+            if session.onionActiveLayerOnly, let index = session.activeIndex {
+                onion.layers = onion.layers.indices.contains(index) ? [onion.layers[index]] : []
+            }
             context.saveGState(); context.setAlpha(0.12)
             context.beginTransparencyLayer(auxiliaryInfo: nil)
             PageRenderer.draw(onion, in: context, background: false)
@@ -215,9 +218,14 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate, UIPencilInteracti
     func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool { session.canLoadObjects(ofClass: UIImage.self) }
     func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal { UIDropProposal(operation: .copy) }
     func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
+        var location = session.location(in: self)
+        if self.session?.mirror == true { location.x = bounds.width - location.x }
         session.loadObjects(ofClass: UIImage.self) { [weak self] objects in
             DispatchQueue.main.async {
-                for case let image as UIImage in objects { try? self?.session?.insertImage(image) }
+                for case let image as UIImage in objects {
+                    do { try self?.session?.insertImage(image, at: location) }
+                    catch { self?.session?.inputError = error.localizedDescription }
+                }
             }
         }
     }

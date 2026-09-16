@@ -44,6 +44,9 @@ struct EditorView: View {
             .navigationTitle(store.notebook(notebookID)?.title ?? "Блокнот")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { store.isEditorOpen = true }
+            .onChange(of: session.inputError) { _, message in
+                if let message { localError = message; session.inputError = nil }
+            }
             .onDisappear {
                 store.isEditorOpen = false
                 Task { await store.synchronize() }
@@ -145,6 +148,8 @@ struct EditorView: View {
                     Toggle("Прямые линии", isOn: $session.straightLine)
                 }
                 Section("Соседние страницы") {
+                    Toggle("Только соответствующий слой", isOn: $session.onionActiveLayerOnly)
+                    Text("Используется слой с тем же номером снизу на соседних страницах.").font(.caption).foregroundStyle(.secondary)
                     Stepper("Предыдущих: \(session.onionBefore)", value: $session.onionBefore, in: 0...3)
                     Stepper("Следующих: \(session.onionAfter)", value: $session.onionAfter, in: 0...3)
                 }
