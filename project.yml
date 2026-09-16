@@ -66,11 +66,21 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: Blockyees
+  BlockyeesIntegrationTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [tests/Integration]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Blockyees
 schemes:
   Blockyees:
     build:
       targets:
         Blockyees: all
         BlockyeesUITests: [test]
+        BlockyeesIntegrationTests: [test]
     test:
-      targets: [BlockyeesUITests]
+      targets: [BlockyeesIntegrationTests, BlockyeesUITests]

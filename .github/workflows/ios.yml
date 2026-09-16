@@ -20,6 +20,13 @@ jobs:
         run: |
           brew install xcodegen
           xcodegen generate
+      - name: Compile iPad application
+        timeout-minutes: 8
+        run: |
+          set -o pipefail
+          xcodebuild build -project Blockyees.xcodeproj -scheme Blockyees \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tee compile.log
       - name: Select iPad simulator
         timeout-minutes: 6
         run: |
@@ -51,6 +58,7 @@ jobs:
           name: ipad-verification
           path: |
             build.log
+            compile.log
             TestResults.xcresult
             test-images
             Blockyees.xcodeproj
