@@ -151,7 +151,8 @@ final class EditorSession: ObservableObject {
         var element = imagePage.layers[0].elements[0]
         let factor = min(1, min(page.width / element.imageWidth, page.height / element.imageHeight) * 0.85)
         element.imageWidth *= factor; element.imageHeight *= factor
-        element.imageX = position?.x ?? page.width / 2; element.imageY = position?.y ?? page.height / 2
+        element.imageX = position.map { Double($0.x) } ?? page.width / 2
+        element.imageY = position.map { Double($0.y) } ?? page.height / 2
         edit { $0.layers[index].elements.append(element) }
         selection = [element.id]; tool = .select
     }
