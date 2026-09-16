@@ -43,6 +43,11 @@ struct EditorView: View {
             }
             .navigationTitle(store.notebook(notebookID)?.title ?? "Блокнот")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { store.isEditorOpen = true }
+            .onDisappear {
+                store.isEditorOpen = false
+                Task { await store.synchronize() }
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Страницы") { dismiss() }.accessibilityIdentifier("closeEditor")

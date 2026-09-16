@@ -54,7 +54,7 @@ final class CanvasScrollView: UIScrollView, UIScrollViewDelegate {
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { surface }
 }
 
-final class DrawingSurface: UIView, UIDropInteractionDelegate {
+final class DrawingSurface: UIView, UIDropInteractionDelegate, UIPencilInteractionDelegate {
     weak var session: EditorSession?
     var onions: [NotebookPage] = []
     private var stroke: DrawingElement?
@@ -72,7 +72,9 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate {
         accessibilityLabel = "Холст страницы"
         accessibilityHint = "Рисуй одним пальцем или стилусом. Два пальца перемещают и масштабируют холст."
         addInteraction(UIDropInteraction(delegate: self))
-        addInteraction(UIPencilInteraction())
+        let pencil = UIPencilInteraction()
+        pencil.delegate = self
+        addInteraction(pencil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
 
@@ -82,7 +84,9 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate {
         if session.mirror { context.translateBy(x: bounds.width, y: 0); context.scaleBy(x: -1, y: 1) }
         for onion in onions {
             context.saveGState(); context.setAlpha(0.12)
+            context.beginTransparencyLayer(auxiliaryInfo: nil)
             PageRenderer.draw(onion, in: context, background: false)
+            context.endTransparencyLayer()
             context.restoreGState()
         }
         var preview = session.page
@@ -170,6 +174,10 @@ final class DrawingSurface: UIView, UIDropInteractionDelegate {
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { cancelGesture() }
     private func cancelGesture() {
         trackedTouch = nil; stroke = nil; lasso = []; dragStart = nil; dragCurrent = nil; setNeedsDisplay()
+    }
+
+    func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
+        session?.tool = session?.tool == .eraser ? .pen : .eraser
     }
 
     func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool { session.canLoadObjects(ofClass: UIImage.self) }

@@ -13,6 +13,16 @@ struct BlockyeesApp: App {
                 .tint(.teal)
                 .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
                 .task { await store.load() }
+                .task {
+                    while !Task.isCancelled {
+                        do { try await Task.sleep(nanoseconds: 30_000_000_000) } catch { return }
+                        if scenePhase == .active { await store.synchronize() }
+                    }
+                }
+                .onOpenURL { url in
+                    do { store.addImported(try DocumentIO.importNotebook(at: url), folder: nil) }
+                    catch { store.errorMessage = error.localizedDescription }
+                }
                 .alert("Не удалось выполнить действие", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
                     Button("Понятно") { store.errorMessage = nil }
                 } message: { Text(store.errorMessage ?? "") }

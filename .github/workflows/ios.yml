@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ipad-verification-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: macos-15
@@ -18,6 +21,7 @@ jobs:
           brew install xcodegen
           xcodegen generate
       - name: Select iPad simulator
+        timeout-minutes: 6
         run: |
           xcrun simctl list devices available -j > /tmp/devices.json
           python3 - <<'PY'

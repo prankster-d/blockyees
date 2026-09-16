@@ -17,6 +17,7 @@ final class NotebookStore: ObservableObject {
     private var loaded = false
     private var saveTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
+    var isEditorOpen = false
 
     init() {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -94,11 +95,16 @@ final class NotebookStore: ObservableObject {
     }
 
     func synchronize() async {
-        guard cloudEnabled, !isSyncing, !isLoading else { return }
+        guard cloudEnabled, !isSyncing, !isLoading, !isEditorOpen else { return }
         isSyncing = true; syncMessage = "Синхронизация…"
         await saveTask?.value
         do {
             let result = try await cloud.synchronize(notes: notebooks, folders: folders)
+            guard !isEditorOpen else {
+                syncMessage = "Синхронизация продолжится после закрытия страницы"
+                isSyncing = false
+                return
+            }
             for folder in result.folders where !folders.contains(where: { $0.id == folder.id }) { folders.append(folder) }
             for incoming in result.notes {
                 let merged = notebooks.first(where: { $0.id == incoming.id })

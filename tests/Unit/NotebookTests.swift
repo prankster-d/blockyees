@@ -10,7 +10,7 @@ final class NotebookTests: XCTestCase {
         }
         let original = note.pages.map(\.id)
         note.pageOrder = .recent
-        XCTAssertEqual(note.orderedPages.map(\.id), original.reversed())
+        XCTAssertEqual(note.orderedPages.map(\.id), Array(original.reversed()))
         note.pages[0].modifiedAt = Date(timeIntervalSince1970: 10)
         XCTAssertEqual(note.orderedPages.map(\.id), [original[0], original[2], original[1]])
         note.pageOrder = .original

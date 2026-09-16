@@ -6,11 +6,11 @@ final class EditorSession: ObservableObject {
     @Published var activeLayerID: UUID
     @Published var tool: DrawingTool = .pen
     @Published var color = Color(red: 0.12, green: 0.14, blue: 0.18)
-    @Published var width: Double = 4
-    @Published var fixedWidth = false
-    @Published var pencilOnly = false
-    @Published var fingerEraser = false
-    @Published var straightLine = false
+    @Published var width: Double = 4 { didSet { UserDefaults.standard.set(width, forKey: "inkWidth") } }
+    @Published var fixedWidth = false { didSet { UserDefaults.standard.set(fixedWidth, forKey: "fixedWidth") } }
+    @Published var pencilOnly = false { didSet { UserDefaults.standard.set(pencilOnly, forKey: "pencilOnly") } }
+    @Published var fingerEraser = false { didSet { UserDefaults.standard.set(fingerEraser, forKey: "fingerEraser") } }
+    @Published var straightLine = false { didSet { UserDefaults.standard.set(straightLine, forKey: "straightLine") } }
     @Published var mirror = false
     @Published var onionBefore = 0
     @Published var onionAfter = 0
@@ -24,6 +24,12 @@ final class EditorSession: ObservableObject {
 
     init(page: NotebookPage, onSave: @escaping (NotebookPage) -> Void) {
         self.page = page; activeLayerID = page.layers[0].id; self.onSave = onSave
+        let defaults = UserDefaults.standard
+        width = defaults.object(forKey: "inkWidth") as? Double ?? 4
+        fixedWidth = defaults.bool(forKey: "fixedWidth")
+        pencilOnly = defaults.bool(forKey: "pencilOnly")
+        fingerEraser = defaults.bool(forKey: "fingerEraser")
+        straightLine = defaults.bool(forKey: "straightLine")
     }
 
     var activeIndex: Int? { page.layers.firstIndex { $0.id == activeLayerID } }

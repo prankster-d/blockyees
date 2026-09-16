@@ -12,6 +12,8 @@ struct LibraryView: View {
     @State private var importing = false
     @State private var settings = false
     @State private var deleteID: UUID?
+    @State private var renameID: UUID?
+    @State private var newName = ""
 
     private var currentFolder: NotebookFolder? { store.folders.first { $0.id == folderID } }
     private var filtered: [Notebook] {
@@ -84,6 +86,15 @@ struct LibraryView: View {
             Button("Создать") { store.createFolder(folderName); folderName = "" }
             Button("Отмена", role: .cancel) { folderName = "" }
         }
+        .alert("Название блокнота", isPresented: Binding(get: { renameID != nil }, set: { if !$0 { renameID = nil } })) {
+            TextField("Название", text: $newName)
+            Button("Сохранить") {
+                let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let id = renameID, !trimmed.isEmpty { store.mutate(id) { $0.title = trimmed } }
+                renameID = nil
+            }
+            Button("Отмена", role: .cancel) { renameID = nil }
+        }
         .alert("Удалить блокнот?", isPresented: Binding(get: { deleteID != nil }, set: { if !$0 { deleteID = nil } })) {
             Button("Удалить", role: .destructive) { if let id = deleteID { store.delete(id) }; deleteID = nil }
             Button("Отмена", role: .cancel) { deleteID = nil }
@@ -111,6 +122,7 @@ struct LibraryView: View {
                 }
                 Spacer()
                 Menu {
+                    Button("Переименовать") { newName = note.title; renameID = note.id }
                     Menu("Переместить") {
                         Button("Без папки") { store.move(note.id, to: nil) }
                         ForEach(store.folders) { folder in Button(folder.name) { store.move(note.id, to: folder) } }
